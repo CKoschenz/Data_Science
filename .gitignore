@@ -1,5 +1,7 @@
 # exclude dot folders and files
 .*
+# exclude conda environment folder
+/env
 
 # LaTeX #
 ###################
