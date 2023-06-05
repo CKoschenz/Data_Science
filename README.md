@@ -16,7 +16,7 @@ We a conda environment for portability. For more information on sharing an envir
 Use the file `conda_environment.yml` to create the environment with all depenecies necessary to run the notebooks in this repository.
 To create an environment called `my_env` from a the file run the command:
 
-`conda env create --prefix <path_to_project> --file conda_environment.yml --name my_env`
+`conda env create --prefix <path_to_project>/<my_env>/ --file conda_environment.yml`
 
 ### Start the Environment
 
