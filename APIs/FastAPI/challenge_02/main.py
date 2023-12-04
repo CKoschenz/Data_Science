@@ -1,5 +1,7 @@
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Query, Header
+import datetime
+from fastapi import FastAPI, Query, Header, Request, HTTPException
+from fastapi.responses import JSONResponse
 import json
 import os.path
 import pandas as pd
@@ -44,37 +46,72 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+class MyException(Exception):
+    def __init__(self,                 
+                 name : str,
+                 date: str,
+                 message: str):
+        self.name = name
+        self.message = message
+        self.date = date
+        
+@app.exception_handler(MyException)
+def MyExceptionHandler(
+    request: Request,
+    exception: MyException
+    ):
+    return JSONResponse(
+        status_code=23,
+        content={
+            'url': str(request.url),
+            'name': exception.name,
+            'message': exception.message,
+            'date': exception.date
+        }
+    )
 
 def split_authorization(authorization: str):
-    plan = "Basic"
-    username = "username"
-    password = "password"
+    white_space_split = authorization.split()
+    
+    plan = white_space_split[0]
+    
+    colon_split = white_space_split[1].split(sep=':')
+    username = colon_split[0]
+    password = colon_split[1]
     
     return plan, username, password
 
 
-def check_credentials(username: str, password: str):
-
-
+def credentials_valid(username: str, password: str, accessors: dict):
+    return username in accessors and password == accessors[username]
 
 @app.get("/getMCQ")
 async def getMCQ(use: str, quantity: int, subjects: List[str] = Query(None), 
-                 authorization: Annotated[str | None, Header()] = None):
-
-    _, username, password =  split_authorization(authorization)
-    check_credentials(username, password)
+                 credentials = Header(str)):
+    try:
+        _, username, password =  split_authorization(credentials)
+        if not credentials_valid(username, password, users):
+            raise MyException(name='Access error',
+                              message='Access denied.',
+                              date=str(datetime.datetime.now())
+                              )
+    except MyException:
+            raise HTTPException(
+            status_code=543,
+            detail='Access denied.')
+    
+    df = qdf[(qdf['use']==use) & (qdf['subject'].isin(subjects))]
+    if quantity < len(df):
+        df.sample(quantity)
 
     MCQ_dict = {
         'use': use,
         'subjects':subjects,
-        'quantity': quantity,
+        'quantity': quantity if (quantity < len(df)) else len(df),
         'questions':[],
         'responses': [],
         'correct_answers':[]
     }
-    
-    df = qdf[(qdf['use']==use) & (qdf['subject'].isin(subjects))]
-    df.sample(quantity)
 
     MCQ_dict['questions'] = df['question'].to_list()
     MCQ_dict['responses'] = df[['responseA', 'responseB','responseC','responseD']].values.tolist()
@@ -89,9 +126,12 @@ async def getStatus():
             'Functionality': True}
 
 class Question(BaseModel):
+    '''
+    Question Model.
+    '''
     use: str
     subject:str
-    questions: str
+    question: str
     responseA: str
     responseB: str
     responseC: str
@@ -101,12 +141,29 @@ class Question(BaseModel):
 
 
 @app.put('/addQuestion')
-async def AddQuestionusers(question: Question, authorization: Annotated[str | None, Header()] = None):
-    # new_id = max(users_db, key=lambda u: u.get('user_id'))['user_id']
-    # new_user = {
-    #     'user_id': new_id + 1,
-    #     'name': user.name,
-    #     'subscription': user.subscription
-    # }
-    # users_db.append(new_user)
+async def AddQuestion(question: Question, credentials = Header(str)):
+    '''
+    Add Questions to database. Requires admin rights.
+    '''
+
+    MCQ_dict = {
+        'question': question.question,
+        'subjects': question.subject,
+        'use': question.use,
+        'correct': question.correct_answers,
+        'responseA': question.responseA,
+        'responseB': question.responseB,
+        'responseC': question.responseC,
+        'responseD': question.responseD,
+        'remark': question.remarks
+    }
+
+    qdf.append(MCQ_dict)
+    _, username, password =  split_authorization(credentials)
+    if credentials_valid(username, password, admins):
+        raise(MyException(name='Access error',
+                    message='Access denied.',
+                    date=str(datetime.datetime.now()),
+                    ))
+
     return True
