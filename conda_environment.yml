@@ -1,4 +1,4 @@
-name: venv
+name: datascience
 channels:
   - conda-forge
   - defaults
@@ -116,6 +116,7 @@ dependencies:
   - python-json-logger
   - python-tzdata
   - python_abi
+  - pytorch
   - pytz
   - pyyaml
   - pyzmq

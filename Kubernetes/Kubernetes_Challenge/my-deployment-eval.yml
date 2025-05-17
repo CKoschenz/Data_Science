@@ -1,0 +1,36 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysqlapi-deployment
+  labels:
+    app: mysqlapi
+spec:
+  selector:
+    matchLabels:
+      app: mysqlapi
+  replicas: 1
+  template:
+    metadata:
+      name: mysqlapi
+      labels:
+        app: mysqlapi
+    spec:
+      hostname: mysqlapilocalhost
+      containers:
+        - name: mysqlcontainer
+          image: datascientest/mysql-k8s:1.0.0
+          ports:
+            - containerPort: 3306
+              name: mysql
+        - name: myapicontainer
+          image: the-api
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8000
+              name: myapi
+          env:
+          - name: MYSQL_ROOT_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mysql-datascientest-rootpass
+                key: password

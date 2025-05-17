@@ -1,0 +1,51 @@
+services:
+  framework:
+    image: datascientest/fastapi:1.0.0
+    container_name: framework_to_test
+    networks:
+      - framework_test_network
+    ports:
+      - target: 8000
+        published: 8000
+        protocol: tcp
+        mode: host
+
+  test_authentication:
+    depends_on: 
+      - framework
+    build: Tests/Authentication/
+    container_name: test_authentication
+    networks:
+      - framework_test_network
+    volumes:
+      - ./Test_Results/Authentication:/Results/
+    environment:
+      - LOG=1
+
+  test_authorization:
+    depends_on: 
+      - framework
+    build: Tests/Authorization/
+    container_name: test_authorization
+    networks:
+      - framework_test_network
+    volumes:
+      - ./Test_Results/Authorization:/Results/
+    environment:
+      - LOG=1
+
+  test_content:
+    depends_on: 
+      - framework
+    build: Tests/Content/
+    container_name: test_content
+    networks:
+      - framework_test_network
+    volumes:
+      - ./Test_Results/Content:/Results/
+    environment:
+      - LOG=1
+
+networks:
+  framework_test_network:
+
